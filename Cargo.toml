@@ -1,0 +1,10 @@
+[package]
+name = "parallax"
+version = "0.1.0"
+authors = ["crypto-universe <ykp@protonmail.ch>"]
+
+[dependencies]
+failure = "*"
+
+[features]
+float = []

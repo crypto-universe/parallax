@@ -81,10 +81,10 @@ impl ParallaxVm {
 	/// Returns reference to current executing Function and stack depth.
 	fn turn<'v>(&mut self, operation: &Opcode, current_func: &'v Function, functions: &'v HashMap<&'static str, Function>)
 			-> Result<(&'v Function), Error> {
-		match operation {
-			&Opcode::FunctionStart(_name) => {Err(Error::OpcodeMustBeUnreachable)},
-			&Opcode::FunctionEnd          => {Err(Error::OpcodeMustBeUnreachable)},
-			&Opcode::Call(name) => {
+		match *operation {
+			Opcode::FunctionStart(_name) => {Err(Error::OpcodeMustBeUnreachable)},
+			Opcode::FunctionEnd          => {Err(Error::OpcodeMustBeUnreachable)},
+			Opcode::Call(name) => {
 				//println!("call {}", name);
 				let next_func: &'v Function = functions.get(name).ok_or(Error::FunctionIsNotDefined(name))?;
 				// TODO: Create some recursion monitor that can kill app before stack is exhausted?
@@ -93,7 +93,7 @@ impl ParallaxVm {
 				self.stack_pointer += next_func.stackframe_size;
 				Ok(next_func)
 			},
-			&Opcode::Return => {
+			Opcode::Return => {
 				//println!("return");
 				let ret: (&'static str, usize, usize) = self.return_stack.pop().ok_or(Error::ReturnStackExhausted)?;
 				let previous_func: &'v Function = functions.get(ret.0).ok_or(Error::FunctionIsNotDefined(ret.0))?;
@@ -105,63 +105,63 @@ impl ParallaxVm {
 				Ok(previous_func)
 			},
 			//=================================================================================================
-			&Opcode::Label(_name) => {
+			Opcode::Label(_name) => {
 				//println("label {}", _name);
 				//Actually we do nothing. Label is a service opcode, needed on Function init.
 				self.opcode_pointer += 1;
 				Ok(current_func)
 			},
-			&Opcode::Jump(name) => {
+			Opcode::Jump(name) => {
 				//println("jump to {} label", name);
 				self.jump_generic(current_func, name, |_, _| true,
 						OperandType::IntegerConstant(0), OperandType::IntegerConstant(0))
 			},
-			&Opcode::JumpZero(name, arg1) => {
+			Opcode::JumpZero(name, arg1) => {
 				//println("jump_zero to {} label", name);
 				self.jump_generic(current_func, name, |x, _| x == 0, arg1, OperandType::IntegerConstant(0))
 			},
-			&Opcode::JumpNotZero(name, arg1) => {
+			Opcode::JumpNotZero(name, arg1) => {
 				//println("jump_not_zero to {} label", name);
 				self.jump_generic(current_func, name, |x, _| x != 0, arg1, OperandType::IntegerConstant(0))
 			},
-			&Opcode::JumpBelow(name, arg1, arg2) => {
+			Opcode::JumpBelow(name, arg1, arg2) => {
 				//println("jump_below to {} label", name);
 				self.jump_generic(current_func, name, |x, y| x < y, arg1, arg2)
 			},
-			&Opcode::JumpBelowEqual(name, arg1, arg2) => {
+			Opcode::JumpBelowEqual(name, arg1, arg2) => {
 				//println("jump_below_eq to {} label", name);
 				self.jump_generic(current_func, name, |x, y| x <= y, arg1, arg2)
 			},
-			&Opcode::JumpAbove(name, arg1, arg2) => {
+			Opcode::JumpAbove(name, arg1, arg2) => {
 				//println("jump_above to {} label", name);
 				self.jump_generic(current_func, name, |x, y| x > y, arg1, arg2)
 			},
-			&Opcode::JumpAboveEqual(name, arg1, arg2) => {
+			Opcode::JumpAboveEqual(name, arg1, arg2) => {
 				//println("jump_above_eq to {} label", name);
 				self.jump_generic(current_func, name, |x, y| x >= y, arg1, arg2)
 			},
-			&Opcode::JumpEqual(name, arg1, arg2) => {
+			Opcode::JumpEqual(name, arg1, arg2) => {
 				//println("jump_equal to {} label", name);
 				self.jump_generic(current_func, name, |x, y| x == y, arg1, arg2)
 			},
-			&Opcode::JumpNotEqual(name, arg1, arg2) => {
+			Opcode::JumpNotEqual(name, arg1, arg2) => {
 				//println("jump_not_equal to {} label", name);
 				self.jump_generic(current_func, name, |x, y| x != y, arg1, arg2)
 			},
 			//=================================================================================================
-			&Opcode::Move(dst, src) => {
+			Opcode::Move(dst, src) => {
 				//println!("move");
 				let src_val = self.prefetch_operand(src)?;
-				let _ = self.store_value(dst, src_val)?;
+				self.store_value(dst, src_val)?;
 				self.opcode_pointer += 1;
 				Ok(current_func)
 			},
-			&Opcode::Add(dst, src1, src2) => {
+			Opcode::Add(dst, src1, src2) => {
 				//println!("add");
 				self.two_operand_action_generic(|x, y| x + y, dst, src1, src2)?;
 				Ok(current_func)
 			},
-			&Opcode::Sub(dst, src1, src2) => {
+			Opcode::Sub(dst, src1, src2) => {
 				//println!("subtract");
 				self.two_operand_action_generic(|x, y| x - y, dst, src1, src2)?;
 				Ok(current_func)
@@ -220,9 +220,9 @@ impl ParallaxVm {
 	/// Define a new function and store it in VM for future use.
 	/// index - index of FunctionStart opcode in a whole program
 	/// program - SLICE of program starting from index!
-	pub fn define_function(&self, name: &'static str, index: usize, program: &[Opcode]) -> Result<Function, Error> {
+	pub fn define_function(&self, fname: &'static str, index: usize, program: &[Opcode]) -> Result<Function, Error> {
 		let mut function_result: Function = Function{
-			name: name,
+			name: fname,
 			opcodes_range: Range{start: (index + 1), end: 0},
 			stackframe_size: 10,
 			labels: HashMap::new(),
@@ -236,22 +236,22 @@ impl ParallaxVm {
 				function_result.opcodes_range.end = index + func_end_index;
 
 				// Collect offsets of all labels.
-				for i in 1..func_end_index {
-					if let &Opcode::Label(label_name) = &program[i] {
+				for (i, opcode) in program.iter().enumerate().take(func_end_index).skip(1)  {
+					if let Opcode::Label(label_name) = opcode {
 						// Label offset = global offset (index) + local offset (i)
 						function_result.labels.insert(label_name, index + i);
 						continue;
 					}
-					if let &Opcode::FunctionStart(func_name) = &program[i] {
+					if let Opcode::FunctionStart(func_name) = opcode {
 						// Did you try to define a nested function?
 						return Err(Error::BrokenFunctionDefinition(func_name));
 					}
 				}
 			} else {
-				return Err(Error::BrokenFunctionDefinition(name));
+				return Err(Error::BrokenFunctionDefinition(fname));
 			}
 		} else {
-			return Err(Error::BrokenFunctionDefinition(name));
+			return Err(Error::BrokenFunctionDefinition(fname));
 		}
 
 		Ok(function_result)

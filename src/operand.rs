@@ -31,20 +31,18 @@ pub enum OperandValue {
 
 impl OperandValue {
 	pub fn unwrap_integer(self) -> Result<i64, Error>{
-		let result = match self {
+		match self {
 			OperandValue::IntegerValue(val) => Ok(val),
 			_ => Err(Error::UnsupportedOperand),
-		};
-		result
+		}
 	}
 
 	#[cfg(float)]
 	pub fn unwrap_floating(self) -> Result<f64, Error>{
-		let result = match self {
+		match self {
 			OperandValue::FloatingValue(val) => Ok(val),
 			_ => Err(Error::UnsupportedOperand),
-		};
-		result
+		}
 	}
 }
 

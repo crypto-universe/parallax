@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::ops::Range;
 
+use error::Error;
+use operand::OperandType;
+
 /// Function is a next abstraction after an Opcode.
 /// The idea is that Function provides some restrictions
 /// and extra safety.
@@ -16,6 +19,11 @@ pub struct Function {
 
 	// A HashMap with labels that are defined inside
 	pub labels: HashMap<&'static str, usize>,
+
+	/// variables is a map: name -> (offset, Type(size))
+	pub variables: HashMap<&'static str, (usize, OperandType)>,
+
+	pub data_segment: Vec<u8>,
 	// Argument list
 	// Return list
 }
@@ -25,5 +33,27 @@ impl Function {
 		// strict '>' because END in range should point to return with no exceptions.
 		// TODO: Use #![feature(range_contains)] when it is stable
 		self.opcodes_range.start <= opcode_offset && self.opcodes_range.end > opcode_offset
+	}
+
+	pub fn get_var_value(&self, variable_name: &'static str) -> Result<OperandType, Error> {
+		let (offset, type_size): &(usize, OperandType) = self.variables.get(variable_name).ok_or(Error::VariableDoesNotExist(variable_name))?;
+		let size = match type_size {
+			OperandType::IntegerConstant(size) => *size as usize,
+			#[cfg(float)]
+			OperandType::FloatingConstant(size) => *size as usize,
+			// TODO: support pointers?
+			_ => 0,
+		};
+		if (size == 0) || (offset + size > self.data_segment.len()) {
+			return Err(Error::DataSegmentError);
+		}
+
+		//let pointer_to_variable = self.data_segment.as_slice()[*offset];
+		let mut result: i64 = 0;
+		for i in 0..size {
+			result = (result << 8) + i64::from(self.data_segment[offset + i]);
+		}
+
+		Ok(OperandType::IntegerConstant(result))
 	}
 }

@@ -29,6 +29,14 @@ pub enum Error {
 	#[fail(display = "You are about to jump to {} label, but it doesn't exist in current function scope.", _0)]
 	LabelDoesNotExist(&'static str),
 
+	/// Requested variable doesn't exist in the provided scope.
+	#[fail(display = "You are about to use {} variable, but it doesn't exist in current function scope.", _0)]
+	VariableDoesNotExist(&'static str),
+
+	/// Requested variable is located outside the data segment or has 0 size
+	#[fail(display = "You have requested a broken variable. You should never see this error message.")]
+	DataSegmentError,
+
 	/// If you see this error - there is a huge architecture bug. This case must be forbidden by design!
 	#[fail(display = "You are about to jump to {} label, but it is out of current function scope.", _0)]
 	RestrictedJumpOutOfScope(&'static str),

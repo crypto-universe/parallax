@@ -19,6 +19,7 @@ pub struct ParallaxVm {
 	stack_pointer: usize,
 
 	/// This stack holds return address and a stack frame index
+	/// Contains function name, opcode pointer and stack pointer
 	return_stack: Vec<(&'static str, usize, usize)>,
 }
 
@@ -84,6 +85,11 @@ impl ParallaxVm {
 		match *operation {
 			Opcode::FunctionStart(_name) => {Err(Error::OpcodeMustBeUnreachable)},
 			Opcode::FunctionEnd          => {Err(Error::OpcodeMustBeUnreachable)},
+			Opcode::I08(_) | Opcode::I16(_) | Opcode::I32(_) | Opcode::I64(_)     => {
+				//Actually we do nothing. This is a variable definition.
+				self.opcode_pointer += 1;
+				Ok(current_func)
+			},
 			Opcode::Call(name) => {
 				//println!("call {}", name);
 				let next_func: &'v Function = functions.get(name).ok_or(Error::FunctionIsNotDefined(name))?;
@@ -226,6 +232,8 @@ impl ParallaxVm {
 			opcodes_range: Range{start: (index + 1), end: 0},
 			stackframe_size: 10,
 			labels: HashMap::new(),
+			variables: HashMap::new(),
+			data_segment: Vec::with_capacity(0),
 		};
 		if let Opcode::FunctionStart(_name) = program[0] {
 			let func_end_disc = discriminant(&Opcode::FunctionEnd);
@@ -235,18 +243,43 @@ impl ParallaxVm {
 				// Mark where function ends
 				function_result.opcodes_range.end = index + func_end_index;
 
-				// Collect offsets of all labels.
+				let mut required_data_size = 0;
+				// Collect local variables and offsets of all labels.
 				for (i, opcode) in program.iter().enumerate().take(func_end_index).skip(1)  {
-					if let Opcode::Label(label_name) = opcode {
-						// Label offset = global offset (index) + local offset (i)
-						function_result.labels.insert(label_name, index + i);
-						continue;
-					}
-					if let Opcode::FunctionStart(func_name) = opcode {
-						// Did you try to define a nested function?
-						return Err(Error::BrokenFunctionDefinition(func_name));
-					}
+					match *opcode {
+						Opcode::Label(label_name) => {
+							// Label offset = global offset (index) + local offset (i)
+							function_result.labels.insert(label_name, index + i);
+							continue;
+						},
+						Opcode::FunctionStart(func_name) => {
+							// Did you try to define a nested function?
+							return Err(Error::BrokenFunctionDefinition(func_name));
+						},
+						Opcode::I08(var_name) => {
+							function_result.variables.insert(var_name, (required_data_size, OperandType::IntegerConstant(1)));
+							required_data_size += 1;
+							continue
+						},
+						Opcode::I16(var_name) => {
+							function_result.variables.insert(var_name, (required_data_size, OperandType::IntegerConstant(2)));
+							required_data_size += 2;
+							continue
+						},
+						Opcode::I32(var_name) => {
+							function_result.variables.insert(var_name, (required_data_size, OperandType::IntegerConstant(4)));
+							required_data_size += 4;
+							continue
+						},
+						Opcode::I64(var_name) => {
+							function_result.variables.insert(var_name, (required_data_size, OperandType::IntegerConstant(8)));
+							required_data_size += 8;
+							continue
+						},
+						_ => {/* Not interesting */},
+					};
 				}
+				function_result.data_segment.reserve_exact(required_data_size);
 			} else {
 				return Err(Error::BrokenFunctionDefinition(fname));
 			}

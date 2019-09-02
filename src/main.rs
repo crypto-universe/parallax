@@ -26,6 +26,7 @@ fn main() -> Result<(), Error> {
 /*09*/		Opcode::Return,
 /*10*/		Opcode::FunctionEnd,
 /*11*/		Opcode::FunctionStart("test1"),
+			Opcode::I32("first_var"),
 /*12*/		Opcode::Add(OperandType::IntegerRegister(10), OperandType::IntegerConstant(31), OperandType::IntegerConstant(5)),
 /*13*/		Opcode::Return,
 /*14*/		Opcode::FunctionEnd,

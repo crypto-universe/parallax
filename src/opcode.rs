@@ -41,4 +41,13 @@ pub enum Opcode {
 	Add(OperandType, OperandType, OperandType),
 	/// Stores in to destination (first argument) sub of two arbitrary operands
 	Sub(OperandType, OperandType, OperandType),
+//============================== VARIABLES ====================================
+	/// 8 bits variable (1 byte)
+	I08(&'static str),
+	/// 16 bits variable (2 bytes)
+	I16(&'static str),
+	/// 32 bits variable (4 bytes)
+	I32(&'static str),
+	/// 64 bits variable (8 bytes)
+	I64(&'static str),
 }

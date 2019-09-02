@@ -85,7 +85,7 @@ impl ParallaxVm {
 		match *operation {
 			Opcode::FunctionStart(_name) => {Err(Error::OpcodeMustBeUnreachable)},
 			Opcode::FunctionEnd          => {Err(Error::OpcodeMustBeUnreachable)},
-			Opcode::I08(_) | Opcode::I16(_) | Opcode::I32(_) | Opcode::I64(_)     => {
+			Opcode::I08(_,_) | Opcode::I16(_,_) | Opcode::I32(_,_) | Opcode::I64(_,_) => {
 				//Actually we do nothing. This is a variable definition.
 				self.opcode_pointer += 1;
 				Ok(current_func)
@@ -159,6 +159,18 @@ impl ParallaxVm {
 				//println!("move");
 				let src_val = self.prefetch_operand(src)?;
 				self.store_value(dst, src_val)?;
+				self.opcode_pointer += 1;
+				Ok(current_func)
+			},
+			Opcode::Load(dst, var_name) => {
+				let src_val = current_func.get_var_value(var_name)?;
+				self.store_value(dst, src_val)?;
+				self.opcode_pointer += 1;
+				Ok(current_func)
+			},
+			Opcode::Store(var_name, src) => {
+				let src_val = self.prefetch_operand(src)?;
+				current_func.set_var_value(var_name, src_val)?;
 				self.opcode_pointer += 1;
 				Ok(current_func)
 			},
@@ -256,22 +268,25 @@ impl ParallaxVm {
 							// Did you try to define a nested function?
 							return Err(Error::BrokenFunctionDefinition(func_name));
 						},
-						Opcode::I08(var_name) => {
+						Opcode::I08(var_name, val) => {
 							function_result.variables.insert(var_name, (required_data_size, OperandType::IntegerConstant(1)));
+							set_var_value(var_name, val);
 							required_data_size += 1;
 							continue
 						},
-						Opcode::I16(var_name) => {
+						Opcode::I16(var_name, val) => {
 							function_result.variables.insert(var_name, (required_data_size, OperandType::IntegerConstant(2)));
+							set_var_value(var_name, val);
 							required_data_size += 2;
 							continue
 						},
-						Opcode::I32(var_name) => {
+						Opcode::I32(var_name, val) => {
 							function_result.variables.insert(var_name, (required_data_size, OperandType::IntegerConstant(4)));
+							set_var_value(var_name, val); // Can't because vector has 0 size now!
 							required_data_size += 4;
 							continue
 						},
-						Opcode::I64(var_name) => {
+						Opcode::I64(var_name, val) => {
 							function_result.variables.insert(var_name, (required_data_size, OperandType::IntegerConstant(8)));
 							required_data_size += 8;
 							continue

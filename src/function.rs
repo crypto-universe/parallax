@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::Range;
 
 use error::Error;
-use operand::OperandType;
+use operand::{OperandType, OperandValue};
 
 /// Function is a next abstraction after an Opcode.
 /// The idea is that Function provides some restrictions
@@ -23,6 +23,7 @@ pub struct Function {
 	/// variables is a map: name -> (offset, Type(size))
 	pub variables: HashMap<&'static str, (usize, OperandType)>,
 
+	// TODO: make it global?
 	pub data_segment: Vec<u8>,
 	// Argument list
 	// Return list
@@ -35,7 +36,7 @@ impl Function {
 		self.opcodes_range.start <= opcode_offset && self.opcodes_range.end > opcode_offset
 	}
 
-	pub fn get_var_value(&self, variable_name: &'static str) -> Result<OperandType, Error> {
+	pub fn get_var_value(&self, variable_name: &'static str) -> Result<OperandValue, Error> {
 		let (offset, type_size): &(usize, OperandType) = self.variables.get(variable_name).ok_or(Error::VariableDoesNotExist(variable_name))?;
 		let size = match type_size {
 			OperandType::IntegerConstant(size) => *size as usize,
@@ -54,6 +55,10 @@ impl Function {
 			result = (result << 8) + i64::from(self.data_segment[offset + i]);
 		}
 
-		Ok(OperandType::IntegerConstant(result))
+		Ok(OperandValue::IntegerValue(result))
+	}
+
+	pub fn set_var_value(&self, variable_name: &'static str, value: OperandValue) -> Result<(), Error> {
+		Ok(())
 	}
 }

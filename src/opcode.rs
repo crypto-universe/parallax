@@ -36,6 +36,10 @@ pub enum Opcode {
 //============================== MOVES ========================================
 	/// Move values into registers (or memory). Destination can't be a constant
 	Move(OperandType, OperandType),
+	/// Load variable (by name) into register
+	Load(OperandType, &'static str),
+	/// Store data from register into variable
+	Store(&'static str, OperandType),
 //============================== MATH =========================================
 	/// Stores in to destination (first argument) sum of two arbitrary operands
 	Add(OperandType, OperandType, OperandType),
@@ -43,11 +47,11 @@ pub enum Opcode {
 	Sub(OperandType, OperandType, OperandType),
 //============================== VARIABLES ====================================
 	/// 8 bits variable (1 byte)
-	I08(&'static str),
+	I08(&'static str, i8),
 	/// 16 bits variable (2 bytes)
-	I16(&'static str),
+	I16(&'static str, i16),
 	/// 32 bits variable (4 bytes)
-	I32(&'static str),
+	I32(&'static str, i32),
 	/// 64 bits variable (8 bytes)
-	I64(&'static str),
+	I64(&'static str, i64),
 }
